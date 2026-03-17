@@ -1,0 +1,39 @@
+Template: rws2811/enable-spi
+Type: boolean
+Default: true
+Description: Enable SPI on this Raspberry Pi?
+ The WS2811 LED controller requires the SPI interface to be enabled.
+ This will add 'dtparam=spi=on' to /boot/firmware/config.txt and
+ the change will take effect on the next reboot.
+
+Template: rws2811/buffer-size
+Type: string
+Default: 150
+Description: Frame buffer size in bytes:
+ Number of bytes per LED frame. This should match the number of LEDs
+ multiplied by the bytes per LED (e.g. 50 LEDs * 3 bytes = 150).
+ The value must fit within a single UDP packet (max 1472 for MTU 1500).
+
+Template: rws2811/spi-speed
+Type: string
+Default: 2000000
+Description: SPI speed in Hz:
+ Clock speed for the SPI bus.
+
+Template: rws2811/spi-device
+Type: string
+Default: /dev/spidev0.0
+Description: SPI device path:
+ Path to the SPI device node.
+
+Template: rws2811/frame-rate
+Type: string
+Default: 60
+Description: Frame rate in FPS:
+ How often to send the frame buffer to the SPI device.
+
+Template: rws2811/listen-address
+Type: string
+Default: 0.0.0.0:1337
+Description: UDP listen address:
+ Address and port to listen for incoming LED frames.

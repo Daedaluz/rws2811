@@ -64,17 +64,6 @@ impl Device {
         Ok(Device { fd, cfg })
     }
 
-    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        let ret = unsafe {
-            libc::write(self.fd.as_raw_fd(), data.as_ptr() as *const _, data.len())
-        };
-        if ret < 0 {
-            Err(io::Error::last_os_error())
-        } else {
-            Ok(ret as usize)
-        }
-    }
-
     pub fn tx(&self, data: &[u8]) -> io::Result<Vec<u8>> {
         let mut read = vec![0u8; data.len()];
 

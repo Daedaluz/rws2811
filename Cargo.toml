@@ -2,7 +2,29 @@
 name = "rws2811"
 version = "0.1.0"
 edition = "2024"
+description = "WS2811 LED controller over SPI with UDP input"
+license = "MIT"
 
 [dependencies]
 nix = { version = "0.29", features = ["ioctl", "time", "signal", "event"] }
 clap = { version = "4", features = ["derive"] }
+
+[package.metadata.deb]
+maintainer = "daedaluz"
+section = "utils"
+assets = [
+    ["target/release/rws2811", "usr/bin/", "755"],
+]
+conf-files = []
+systemd-units = { unit-name = "rws2811@" }
+
+[package.metadata.deb.variants.rpi]
+name = "rws2811-rpi"
+depends = "debconf (>= 0.5)"
+conf-files = ["/etc/default/rws2811"]
+assets = [
+    ["target/release/rws2811", "usr/bin/", "755"],
+    ["debian/rws2811@.service", "lib/systemd/system/", "644"],
+]
+maintainer-scripts = "debian/rpi/"
+systemd-units = { unit-name = "rws2811@" }

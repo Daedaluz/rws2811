@@ -1,0 +1,13 @@
+[Unit]
+Description=WS2811 LED controller over SPI (%i)
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/default/rws2811
+ExecStart=/usr/bin/rws2811 $RWS2811_OPTS --device /dev/%i
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

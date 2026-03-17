@@ -9,8 +9,10 @@ use nix::sys::timerfd::{ClockId, Expiration, TimerFd, TimerFlags, TimerSetTimeFl
 use std::io::ErrorKind;
 use std::net::UdpSocket;
 use std::os::fd::AsFd;
-use std::thread;
+use std::{fs, thread};
 use std::time::Duration;
+
+const UDP_OVERHEAD: usize = 28; // 20 bytes IP + 8 bytes UDP
 
 const EVENT_TIMER: u64 = 0;
 const EVENT_SIGNAL: u64 = 1;
@@ -39,8 +41,77 @@ struct Args {
     listen: String,
 }
 
+fn preflight(args: &Args) {
+    // Check that the frame size fits within the MTU of all non-loopback interfaces
+    // Only exit if no interface can carry the frame; warn for those that can't
+    if let Ok(entries) = fs::read_dir("/sys/class/net") {
+        let mut too_small = Vec::new();
+        let mut fits = Vec::new();
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name == "lo" {
+                continue;
+            }
+            let mtu_path = entry.path().join("mtu");
+            let Ok(contents) = fs::read_to_string(&mtu_path) else { continue };
+            let Ok(mtu) = contents.trim().parse::<usize>() else { continue };
+            let max_payload = mtu.saturating_sub(UDP_OVERHEAD);
+            if args.size > max_payload {
+                too_small.push((name, mtu, max_payload));
+            } else {
+                fits.push((name, mtu, max_payload));
+            }
+        }
+        if !too_small.is_empty() {
+            for (name, mtu, max_payload) in &too_small {
+                eprintln!(
+                    "frame size {} exceeds max UDP payload {max_payload} (MTU {mtu} on {name})",
+                    args.size
+                );
+            }
+            if fits.is_empty() {
+                std::process::exit(1);
+            }
+            for (name, mtu, max_payload) in &fits {
+                eprintln!(
+                    "frame size {} fits within max UDP payload {max_payload} (MTU {mtu} on {name})",
+                    args.size
+                );
+            }
+        }
+    }
+
+    // Check that the SPI bus can keep up with the requested frame rate
+    // Time per frame: (size * 8 / speed) + delay_usec
+    let bits_per_frame = args.size as f64 * 8.0;
+    let transfer_secs = bits_per_frame / args.speed as f64;
+    let delay_secs = 500e-6; // delay_usec from SPI config
+    let frame_secs = transfer_secs + delay_secs;
+    let max_fps = 1.0 / frame_secs;
+    if (args.rate as f64) > max_fps {
+        eprintln!(
+            "requested {} FPS but SPI can only sustain {:.1} FPS \
+             ({} bytes @ {} Hz + 500us delay = {:.2}ms per frame)",
+            args.rate,
+            max_fps,
+            args.size,
+            args.speed,
+            frame_secs * 1000.0,
+        );
+        std::process::exit(1);
+    }
+}
+
 fn main() {
     let args = Args::parse();
+    preflight(&args);
+
+    eprintln!("rws2811 v{}", env!("CARGO_PKG_VERSION"));
+    eprintln!("  device : {}", args.device);
+    eprintln!("  speed  : {} Hz", args.speed);
+    eprintln!("  rate   : {} fps", args.rate);
+    eprintln!("  size   : {} B", args.size);
+    eprintln!("  listen : {}", args.listen);
 
     let device = loop {
         match spi::Device::open(
