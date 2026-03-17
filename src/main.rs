@@ -181,12 +181,14 @@ fn main() {
                 EVENT_SOCKET => {
                     // Drain all pending UDP packets to catch up if we would fall behind in frames
                     // This would indicate that we are not able to keep up with the incoming frame rate, and dropping frames is necessary to catch up
+                    let mut drained = 0usize;
                     loop {
                         match sock.recv_from(&mut recv_buf) {
                             Ok((n, _)) => {
                                 let len = n.min(buffer.len());
                                 buffer[..len].copy_from_slice(&recv_buf[..len]);
                                 dirty = true;
+                                drained += 1;
                             }
                             Err(e) if e.kind() == ErrorKind::WouldBlock => break,
                             Err(e) => {
@@ -194,6 +196,9 @@ fn main() {
                                 std::process::exit(1);
                             }
                         }
+                    }
+                    if drained > 1 {
+                        eprintln!("warn: drained {drained} frames in one poll; sender outpacing output rate");
                     }
                 }
                 EVENT_TIMER => {
