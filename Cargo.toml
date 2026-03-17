@@ -10,7 +10,7 @@ nix = { version = "0.29", features = ["ioctl", "time", "signal", "event"] }
 clap = { version = "4", features = ["derive"] }
 
 [package.metadata.deb]
-maintainer = "daedaluz"
+maintainer = "Tobias Assarsson <tobias.assarsson@gmail.com>"
 section = "utils"
 assets = [
     ["target/release/rws2811", "usr/bin/", "755"],
