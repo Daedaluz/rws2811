@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-    | sh -s -- -y --default-toolchain stable --default-host arm-unknown-linux-gnueabihf
+    | sh -s -- -y --default-toolchain stable
 ENV PATH="/root/.cargo/bin:$PATH"
 
 RUN cargo install cargo-deb
@@ -20,7 +20,7 @@ RUN cargo install cargo-deb
 WORKDIR /build
 COPY . .
 
-RUN cargo deb --variant=rpi --compress-type gz
+#RUN cargo deb --variant=rpi --compress-type gz
 
-FROM scratch
-COPY --from=builder /build/target/debian/*.deb /
+#FROM scratch
+#COPY --from=builder /build/target/debian/*.deb /
